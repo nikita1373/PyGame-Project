@@ -15,19 +15,23 @@ cactus_img = [pygame.image.load('Cactus0.png'), pygame.image.load('Cactus1.png')
 cloud_img = [pygame.image.load('Cloud0.png'), pygame.image.load('Cloud1.png')]
 dino_img = [pygame.image.load('Dino0.png'), pygame.image.load('Dino1.png'), pygame.image.load('Dino2.png'),
             pygame.image.load('Dino3.png'), pygame.image.load('Dino4.png')]
-bat0 = pygame.image.load('Bat0.png').convert
-bat1 = pygame.image.load('Bat1.png').convert
-bat2 = pygame.image.load('Bat2.png').convert
-bat0_small = pygame.transform.scale(bat0, (50, 30))
-bat1_small = pygame.transform.scale(bat1, (50, 30))
-bat2_small = pygame.transform.scale(bat2, (50, 30))
-bat_img = [bat0_small, bat1_small, bat2_small]
+bat0 = pygame.image.load('Bat0.png')
+bat1 = pygame.image.load('Bat1.png')
+bat2 = pygame.image.load('Bat2.png')
+bat3 = pygame.image.load('Bat3.png')
+bat0_small = pygame.transform.scale(bat0, (120, 72))
+bat1_small = pygame.transform.scale(bat1, (120, 72))
+bat2_small = pygame.transform.scale(bat2, (120, 72))
+bat3_small = pygame.transform.scale(bat3, (120, 72))
+bat_img = [bat0_small, bat1_small, bat2_small, bat3_small]
 
 cactus_options = [69, 449, 37, 410, 40, 420]
+bat_options = [70, 250, 300, 350]
 
 dino_img_counter = 0
 bat_img_counter = 0
 score_counter = 0
+max_score = 0
 
 above_cactus = False
 
@@ -57,6 +61,11 @@ cactus_width = 20
 cactus_height = 70
 cactus_x = 750
 cactus_y = display_height - cactus_height - 100
+
+bat_width = 20
+bat_height = 70
+bat_x = 750
+bat_y = display_height - cactus_height - 100
 
 usr_width = 60
 usr_height = 100
@@ -90,11 +99,13 @@ def create_cactus_arr(array):  # Создание кактусов
 
 
 def create_bat_arr(array):  # Создание летучих мышей
-    global bat_img_counter
-    if bat_img_counter == 20:
-        bat_img_counter = 0
-    display.blit(bat_img[bat_img_counter // 5], (usr_x, usr_y))
-    bat_img_counter += 1
+    choice = random.randrange(1, 3)
+    choice1 = random.randrange(0, 30)
+    choice2 = random.randrange(6, 9)
+    img = pygame.image.load('Empty.png')
+    width = bat_options[0]
+    height = bat_options[choice]
+    array.append(Object(display_width + 20 * choice1, height, width, img, choice2))
 
 
 def find_cactus_radius(array):  # Поиск оптимального расстояния между кактусами
@@ -127,7 +138,7 @@ def find_bat_radius(array):  # Поиск оптимального рассто�
     if choice == 0:
         radius += random.randrange(10, 15)
     else:
-        radius += random.randrange(200, 250)
+        radius += random.randrange(200, 1000)
     return radius
 
 
@@ -144,24 +155,33 @@ def draw_cactus_array(array):  # Рисуем кактусы на экране
 
 
 def draw_bat_array(array):  # Рисуем летучих мышей на экране
+    global bat_img_counter
     for bat in array:
         check = bat.move()
         if not check:
+            choice = random.randrange(1, 3)
             radius = find_bat_radius(array)
-            img = bat_img[0]
-            width = 2
-            height = 2
+            img = pygame.image.load('Empty.png')
+            width = bat_options[0]
+            height = bat_options[choice]
             bat.return_self(radius, height, width, img)
+        else:
+            if bat_img_counter == 15:
+                bat_img_counter = 0
+            display.blit(bat_img[bat_img_counter // 5], (array[0].x, array[0].y))
+            bat_img_counter += 1
 
 
 def run_game():  # Основная функция, запускающая игровой цикл.
     global score_counter
     global make_jump
+    global max_score
     game = True
     land = pygame.image.load('Land.jpg')
     cactus_arr = []
-    bat_arr = [Object(display_width + 20, 2, 2, bat_img[0], 4)]
+    bat_arr = []
     create_cactus_arr(cactus_arr)
+    create_bat_arr(bat_arr)
     cloud = open_random_object()
     scores = 0
     while game:
@@ -182,8 +202,11 @@ def run_game():  # Основная функция, запускающая иг�
         if score_counter == 5:
             score_counter = 0
             scores += 1
+            if scores > max_score:
+                max_score = scores
         display.blit(land, (0, 0))
         print_text('Score: ' + str(scores), 620, 20)
+        print_text('Best: ' + str(max_score), 620, 45)
         draw_cactus_array(cactus_arr)
         draw_bat_array(bat_arr)
         move_objects(cloud)
@@ -191,6 +214,8 @@ def run_game():  # Основная функция, запускающая иг�
         draw_dino()
 
         if check_collision(cactus_arr):
+            game = False
+        if check_collision(bat_arr):
             game = False
 
         pygame.display.update()
@@ -267,22 +292,22 @@ def check_collision(barriers):  # Проверка на столкновение
                 if usr_y + usr_height - 10 >= barrier.y:
                     if barrier.x <= usr_x <= barrier.x + barrier.width:
                         return True
-        else:  # Другие кактусы
+        elif barrier.y == 410 or barrier.y == 420:  # Другие кактусы
             if not make_jump:
-                if barrier.x <= usr_x + usr_width - 5 <= barrier.x + barrier.width:
+                if barrier.x <= usr_x + usr_width <= barrier.x + barrier.width:
                     return True
-            elif jump_counter == 10:
-                if usr_y + usr_height - 5 >= barrier.y:
-                    if barrier.x <= usr_x + usr_width - 5 <= barrier.x + barrier.width:
-                        return True
-            elif jump_counter >= -1:
+            elif jump_counter >= 0:
                 if usr_y + usr_height - 5 >= barrier.y:
                     if barrier.x <= usr_x + usr_width - 35 <= barrier.x + barrier.width:
                         return True
-                else:
-                    if usr_y + usr_height - 10 >= barrier.y:
-                        if barrier.x <= usr_x + 5 <= barrier.x + barrier.width:
-                            return True
+            else:
+                if usr_y + usr_height - 10 >= barrier.y:
+                    if barrier.x <= usr_x <= barrier.x - 10 + barrier.width:
+                        return True
+        else:  # Летучие мыши
+            if usr_y <= barrier.y + 50 and usr_y + usr_height - 15 >= barrier.y + 20:
+                if barrier.x + 30 <= usr_x + usr_width - 5 <= barrier.x + barrier.width:
+                    return True
     return False
 
 
@@ -302,7 +327,6 @@ def game_over():  # Завершение игры при столкновени�
         pygame.display.update()
         clock.tick(60)
                 
-
 
 # Запускаем игровой цикл.
 while run_game():
